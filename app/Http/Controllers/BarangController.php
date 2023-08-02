@@ -8,9 +8,11 @@ use App\Http\Requests\UpdateBarangRequest;
 
 class BarangController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
     public function index()
     {
         $barang = Barang::select('id','nama_barang')->get();
