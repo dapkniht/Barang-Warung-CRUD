@@ -3,60 +3,110 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kategori;
-use App\Http\Requests\StoreKategoriRequest;
-use App\Http\Requests\UpdateKategoriRequest;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Yajra\DataTables\DataTables;
 
 class KategoriController extends Controller
 {
-    public function __construct()
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
     {
-        $this->middleware('auth:sanctum');
+        if ($request->ajax()) {
+            $data = Kategori::query();
+            return DataTables::of($data)
+            ->addIndexColumn()
+            ->addColumn('total_barang', function($kategori) {
+                return $kategori->barang->count();
+            })
+            ->addColumn('action', function($row){
+                $showRoute = route('kategori.show',$row->id);
+                $deleteRoute = route('kategori.destroy',$row->id);
+                $editRoute = route('kategori.edit',$row->id);
+                   $btn = "<a href='".$showRoute."'class='edit btn btn-info btn-sm'>Show</a>";
+                   $btn .= "<a href='".$editRoute."'class='edit btn btn-warning btn-sm'>Edit</a>";
+                   $btn .= '<form action="' . $deleteRoute . '" method="POST" class="d-inline">';
+                   $btn .= csrf_field();
+                   $btn .= method_field('DELETE');
+                   $btn .= '<button type="submit" class="btn btn-sm btn-danger">Delete</button>';
+                   $btn .= '</form>';
+           
+                return $btn;
+            })
+            ->rawColumns(['action'])
+                    ->make();
+        }
+        return view('kategori.index');
     }
-    public function index()
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
     {
-        $kategori = Kategori::select('id','nama_kategori')->get();
-        return response()->json([
-            "status" => "sukses",
-            "data" => $kategori
-        ]);
+        return view('kategori.create');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreKategoriRequest $request)
+    public function store(Request $request)
     {
-        $validated = $request->validated();
-        $stored_kategori = Kategori::create($validated);
-        return response()->json([
-            "status" => "sukses",
-            "data" => $stored_kategori
+        $validated = $request->validate([
+            'nama_kategori' => 'required',
         ]);
+        Kategori::create($validated);
+        return redirect('/kategori')->with(['status' => 'sukses', 'message' => 'Berhasil menambah kategori baru']);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Kategori $kategori)
+    public function show(Request $request,Kategori $kategori)
     {
-        $kategori->barang;
-        return response()->json([
-            "status" => "sukses",
-            "data" => $kategori,
-        ]);
+        if ($request->ajax()) {
+            return DataTables::of($kategori->barang)
+            ->addIndexColumn()
+            ->addColumn('action', function($row){
+                $deleteRoute = route('barang.destroy',$row->id);
+                $editRoute = route('barang.edit',$row->id);
+                   $btn = "<a href='".$editRoute."'class='edit btn btn-primary btn-sm'>Edit</a>";
+                   $btn .= '<form action="' . $deleteRoute . '" method="POST" class="d-inline">';
+                   $btn .= csrf_field();
+                   $btn .= method_field('DELETE');
+                   $btn .= '<button type="submit" class="btn btn-sm btn-danger">Delete</button>';
+                   $btn .= '</form>';
+           
+                return $btn;
+            })
+            ->rawColumns(['action'])
+                    ->make();
+        }
+        return view('kategori.show',['kategori' => $kategori]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Kategori $kategori)
+    {
+        return view('kategori.edit',['kategori' => $kategori]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateKategoriRequest $request, Kategori $kategori)
+    public function update(Request $request, Kategori $kategori)
     {
-        $validated = $request->validated();
-        $kategori->update($validated);
-        return response()->json([
-            "status" => "sukses",
-            "data" => $kategori
+        $validated = $request->validate([
+            'nama_kategori' => 'required',
         ]);
+
+        $kategori->update($validated);
+        return redirect('/kategori')->with(['status' => 'sukses', 'message' => 'Berhasil menagubah data kategori']);
+
     }
 
     /**
@@ -65,9 +115,6 @@ class KategoriController extends Controller
     public function destroy(Kategori $kategori)
     {
         $kategori->delete();
-        return response()->json([
-            "status" => "sukses",
-            "data" => $kategori
-        ]);
+        return redirect()->back()->with(['status' => 'sukses', 'message' => 'Berhasil menghapus kategori']);
     }
 }

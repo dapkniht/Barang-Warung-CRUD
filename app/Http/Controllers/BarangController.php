@@ -2,37 +2,65 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\BarangDataTable;
 use App\Models\Barang;
-use App\Http\Requests\StoreBarangRequest;
-use App\Http\Requests\UpdateBarangRequest;
+use App\Models\Kategori;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Yajra\DataTables\DataTables;
 
-class BarangController extends Controller
+class Barangcontroller extends Controller
 {
-    public function __construct()
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
     {
-        $this->middleware('auth:sanctum');
+        
+        if ($request->ajax()) {
+            $data = Barang::query();
+            return DataTables::of($data)
+            ->addIndexColumn()
+            ->addColumn('action', function($row){
+                $deleteRoute = route('barang.destroy',$row->id);
+                $editRoute = route('barang.edit',$row->id);
+                   $btn = "<a href='".$editRoute."'class='edit btn btn-primary btn-sm'>Edit</a>";
+                   $btn .= '<form action="' . $deleteRoute . '" method="POST" class="d-inline">';
+                   $btn .= csrf_field();
+                   $btn .= method_field('DELETE');
+                   $btn .= '<button type="submit" class="btn btn-sm btn-danger">Delete</button>';
+                   $btn .= '</form>';
+           
+                return $btn;
+            })
+            ->rawColumns(['action'])
+                    ->make();
+        }
+        return view('barang.index');
     }
 
-    public function index()
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
     {
-        $barang = Barang::select('id','nama_barang')->get();
-        return response()->json([
-            "status" => "sukses",
-            "data" => $barang
-        ]);
+        $kategori = Kategori::select(['nama_kategori','id'])->get();
+        return view('barang.create',['listkategori' => $kategori]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreBarangRequest $request)
+    public function store(Request $request)
     {
-        $validated = $request->validated();
-        $stored_barang = Barang::create($validated);
-        return response()->json([
-            "status" => "sukses",
-            "data" => $stored_barang
+        $validated = $request->validate([
+            'nama_barang' => 'required',
+            'stok' => 'required',
+            'harga' => 'required',
+            'kategori_id' => "required"
         ]);
+        Barang::create($validated);
+        return redirect('/barang')->with(['status' => 'sukses', 'message' => 'Berhasil menambah barang baru']);
     }
 
     /**
@@ -40,23 +68,32 @@ class BarangController extends Controller
      */
     public function show(Barang $barang)
     {
-         return response()->json([
-            "status" => "sukses",
-            "data" => $barang
-        ]);
+        return $barang;
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Barang $barang)
+    {
+        $kategori = Kategori::select(['nama_kategori','id'])->get();
+        return view('barang.edit',['barang' => $barang,'listkategori' => $kategori, 'id' => $barang->id]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateBarangRequest $request, Barang $barang)
+    public function update(Request $request, Barang $barang)
     {
-        $validated = $request->validated();
-        $barang->update($validated);
-        return response()->json([
-            "status" => "sukses",
-            "data" => $barang
+        $validated = $request->validate([
+            'nama_barang' => 'required',
+            'stok' => 'required',
+            'harga' => 'required',
+            'kategori_id' => "required"
         ]);
+
+        $barang->update($validated);
+        return redirect('/barang')->with(['status' => 'sukses', 'message' => 'Berhasil mengubah data barang']);
     }
 
     /**
@@ -65,9 +102,6 @@ class BarangController extends Controller
     public function destroy(Barang $barang)
     {
         $barang->delete();
-        return response()->json([
-            "status" => "sukses",
-            "data" => $barang
-        ]);
+        return redirect()->back()->with(['status' => 'sukses', 'message' => 'Berhasil menghapus barang']);
     }
 }

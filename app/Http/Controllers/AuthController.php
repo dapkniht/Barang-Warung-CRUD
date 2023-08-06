@@ -2,45 +2,41 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-   public function login(Request $request){
-        $validator = $request->validate([
-            "email" => "required|email",
-            "password" => "required"
+    public function loginPage(){
+        return view('auth.login-page');
+    }
+
+    public function login(Request $request){
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
         ]);
-
-        if (Auth::attempt($validator)) {
-            $user = User::where("email",$request->input("email"))->get();
-            $token = $request->user()->createToken($user[0]->name)->plainTextToken;
-            return response()->json([
-                "status" => "sukses",
-                "data" => $user[0],
-                "token" => $token,
-            ],200);
+        if (Auth::attempt($validated)) {
+            $request->session()->regenerate();
+ 
+            return to_route('barang.index');
         }
-        return response()->json([
-            "status" => "gagal",
-            "message" => "Proses login gagal",
-        ],400);
-
-   }
-
-   public function logout(Request $request) {
-    $request->validate([
-            "email" => "required|email",
-            "password" => "required"
-    ]);
+ 
+        return back()->with(['status' => "failed", "message" => "Email Atau Password Salah"]);
+    }
+       
+    public function logout(Request $request){
         Auth::logout();
-        $user = User::where("email",$request->input("email"))->get();
-        $user[0]->tokens()->delete();
-        return response()->json([
-            "status" => "sukses",
-            "message" => "logout berhasil",
-        ],200); 
+ 
+        $request->session()->invalidate();
+     
+        $request->session()->regenerateToken();
+     
+        return to_route('auth.login-page');
+    }
+
+    public function forgotPasswordPage(){
+        return view('auth.forgot-password-page');
     }
 }
